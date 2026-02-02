@@ -121,8 +121,8 @@ public static class BrowserHelper
             if (IsWebView2Available())
             {
                 sb.AppendLine();
-                sb.AppendLine("Note: WebView2 runtime detected. A future version may support using");
-                sb.AppendLine("WebView2 as a fallback renderer.");
+                sb.AppendLine("Note: WebView2 runtime is available on this system and will be used");
+                sb.AppendLine("as a fallback renderer if no Chromium browser is found.");
             }
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

@@ -70,7 +70,7 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
         return Path.GetDirectoryName(_templatePath)!;
     }
 
-    private async Task<string> StartHttpServerAsync()
+    public async Task<string> StartHttpServerAsync()
     {
         if (_httpServerUrl != null)
             return _httpServerUrl;

@@ -212,8 +212,9 @@ Mermaid.NET's browser detection order:
 
 1. **Custom path** - If specified in `--browserConfigFile`
 2. **System browsers** - Chrome, Chromium, or Edge
-3. **Download Chromium** - Only if `--downloadBrowser` is set
-4. **Error** - If none of the above work
+3. **WebView2** (Windows only) - Falls back to WebView2 runtime if available
+4. **Download Chromium** - Only if `--downloadBrowser` is set
+5. **Error** - If none of the above work
 
 **Browser configuration file** (`browser-config.json`):
 ```json
@@ -289,7 +290,7 @@ See the [Mermaid documentation](https://mermaid.js.org/) for complete syntax and
    ./mermaid-dotnet --check-browsers
    ```
 
-**Note:** On Windows, if you have Microsoft Edge installed, Mermaid.NET can use it automatically. Future versions may support using the WebView2 runtime as a fallback rendering engine.
+**Note:** On Windows, if you have Microsoft Edge installed, Mermaid.NET can use it automatically. If no Chromium-based browser is found, Mermaid.NET will automatically fall back to using the WebView2 runtime (included with Windows 11 and Edge on Windows 10) for rendering.
 
 ### Browser sandbox issues (Linux)
 
