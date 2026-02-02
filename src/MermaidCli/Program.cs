@@ -106,6 +106,12 @@ var iconPacksNamesAndUrlsOption = new Option<string[]>("--iconPacksNamesAndUrls"
     AllowMultipleArgumentsPerToken = true
 };
 
+var checkBrowsersOption = new Option<bool>("--check-browsers")
+{
+    Description = "Check for available browsers and display diagnostic information. Exits after displaying the report.",
+    DefaultValueFactory = _ => false
+};
+
 var rootCommand = new RootCommand("Mermaid CLI - Generate diagrams from mermaid definitions (.NET port)")
 {
     themeOption,
@@ -125,11 +131,20 @@ var rootCommand = new RootCommand("Mermaid CLI - Generate diagrams from mermaid 
     browserConfigFileOption,
     allowBrowserDownloadOption,
     iconPacksOption,
-    iconPacksNamesAndUrlsOption
+    iconPacksNamesAndUrlsOption,
+    checkBrowsersOption
 };
 
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
+    // Check if --check-browsers was specified
+    var checkBrowsers = parseResult.GetValue(checkBrowsersOption);
+    if (checkBrowsers)
+    {
+        Console.WriteLine(BrowserHelper.GetBrowserDiagnostics());
+        return;
+    }
+
     var theme = parseResult.GetValue(themeOption)!;
     var width = parseResult.GetValue(widthOption);
     var height = parseResult.GetValue(heightOption);

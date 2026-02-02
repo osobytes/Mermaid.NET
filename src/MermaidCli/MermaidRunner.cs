@@ -19,7 +19,37 @@ public static class MermaidRunner
 
         IBrowser? ownedBrowser = null;
         var shouldCloseBrowser = browser == null;
+        
+        // Check if we should use WebView2 fallback (Windows only)
+        bool useWebView2 = false;
+#if NET10_0
+        if (browser == null && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // Try to launch Chromium browser first
+            try
+            {
+                ownedBrowser = await LaunchBrowserAsync(options.BrowserConfig);
+                browser = ownedBrowser;
+            }
+            catch when (WebView2MermaidRenderer.IsSupported())
+            {
+                // Chromium launch failed but WebView2 is available
+                info("Chromium not found, using WebView2 runtime as fallback");
+                useWebView2 = true;
+            }
+        }
+#endif
+        
         await using var renderer = new PuppeteerMermaidRenderer();
+#if NET10_0
+        WebView2MermaidRenderer? webView2Renderer = null;
+        if (useWebView2)
+        {
+            webView2Renderer = new WebView2MermaidRenderer();
+            await webView2Renderer.InitializeAsync(options.BrowserConfig.Args);
+        }
+#endif
+        
         try
         {
             var outputFormat = options.OutputFormat;
@@ -61,7 +91,14 @@ public static class MermaidRunner
 
                 for (var i = 0; i < blocks.Count; i++)
                 {
-                    if (browser == null)
+#if NET10_0
+                    if (useWebView2 && webView2Renderer == null)
+                    {
+                        throw new InvalidOperationException("WebView2 renderer not initialized");
+                    }
+                    else
+#endif
+                    if (!useWebView2 && browser == null)
                     {
                         ownedBrowser ??= await LaunchBrowserAsync(options.BrowserConfig);
                         browser = ownedBrowser;
@@ -102,8 +139,20 @@ public static class MermaidRunner
                     // Trim trailing whitespace
                     diagramDefinition = diagramDefinition.Trim();
 
-                    var result = await renderer.RenderAsync(
-                        browser, diagramDefinition, diagramFormat, options.RenderOptions);
+                    RenderResult result;
+#if NET10_0
+                    if (useWebView2)
+                    {
+                        result = await webView2Renderer!.RenderAsync(
+                            diagramDefinition, diagramFormat, options.RenderOptions);
+                    }
+                    else
+#endif
+                    {
+                        result = await renderer.RenderAsync(
+                            browser!, diagramDefinition, diagramFormat, options.RenderOptions);
+                    }
+                    
                     await File.WriteAllBytesAsync(outputFile, result.Data);
                     info($" \u2705 {outputFileRelative}");
 
@@ -124,13 +173,32 @@ public static class MermaidRunner
             else
             {
                 info("Generating single mermaid chart");
-                if (browser == null)
+#if NET10_0
+                if (useWebView2 && webView2Renderer == null)
+                {
+                    throw new InvalidOperationException("WebView2 renderer not initialized");
+                }
+                else
+#endif
+                if (!useWebView2 && browser == null)
                 {
                     ownedBrowser ??= await LaunchBrowserAsync(options.BrowserConfig);
                     browser = ownedBrowser;
                 }
-                var result = await renderer.RenderAsync(
-                    browser, definition, diagramFormat, options.RenderOptions);
+                
+                RenderResult result;
+#if NET10_0
+                if (useWebView2)
+                {
+                    result = await webView2Renderer!.RenderAsync(
+                        definition, diagramFormat, options.RenderOptions);
+                }
+                else
+#endif
+                {
+                    result = await renderer.RenderAsync(
+                        browser!, definition, diagramFormat, options.RenderOptions);
+                }
 
                 if (options.OutputFile != "/dev/stdout")
                 {
@@ -145,6 +213,10 @@ public static class MermaidRunner
         }
         finally
         {
+#if NET10_0
+            if (webView2Renderer != null)
+                await webView2Renderer.DisposeAsync();
+#endif
             // Only close browser if we created it (not provided externally)
             if (shouldCloseBrowser && ownedBrowser != null)
                 await ownedBrowser.CloseAsync();
@@ -152,6 +224,21 @@ public static class MermaidRunner
     }
 
     public static async Task<IBrowser> LaunchBrowserAsync(BrowserConfig config)
+    {
+        // Try to launch Chromium-based browser first
+        try
+        {
+            return await TryLaunchChromiumBrowserAsync(config);
+        }
+        catch
+        {
+            // If Chromium launch fails and we're on Windows with WebView2, that will be handled
+            // by the calling code which will use WebView2Mermaid Renderer directly
+            throw;
+        }
+    }
+
+    private static async Task<IBrowser> TryLaunchChromiumBrowserAsync(BrowserConfig config)
     {
         // Security-hardened Chromium arguments for sandboxed rendering
         var securityArgs = new[]
@@ -229,9 +316,7 @@ public static class MermaidRunner
         }
 
         // First, attempt to launch a system browser by trying common executable names
-        var candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? new[] { "msedge", "chrome", "chromium", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" }
-            : new[] { "/usr/bin/chromium-browser", "/usr/bin/google-chrome", "/usr/bin/chromium" };
+        var candidates = BrowserHelper.GetBrowserCandidates();
 
         foreach (var exe in candidates)
         {
@@ -258,7 +343,7 @@ public static class MermaidRunner
             return await Puppeteer.LaunchAsync(launchOptions);
         }
 
-        throw new InvalidOperationException("Unable to launch a browser. Provide an executable path or allow browser download.");
+        throw new InvalidOperationException(BrowserHelper.GetBrowserNotFoundMessage());
     }
 
     private static async Task<string> GetInputDataAsync(string? inputFile)
