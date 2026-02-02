@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MermaidCli.Browser;
 
 namespace MermaidCli.Tests;
 
@@ -6,15 +7,18 @@ namespace MermaidCli.Tests;
 /// Tests for API-specific markdown features and edge cases.
 /// Ports tests.js lines 354-390
 /// </summary>
+[Collection("Browser")]
 public class ApiMarkdownTests : IDisposable
 {
     private readonly string _testOutputDir;
     private readonly string _testInputDir;
+    private readonly IBrowser _browser;
 
-    public ApiMarkdownTests()
+    public ApiMarkdownTests(BrowserFixture browserFixture)
     {
         _testOutputDir = TestHelpers.CreateTempTestDirectory();
         _testInputDir = Path.Combine(AppContext.BaseDirectory, "test-positive");
+        _browser = browserFixture.Browser!;
     }
 
     public void Dispose()
@@ -41,7 +45,7 @@ public class ApiMarkdownTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "png");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - markdown file should exist
         File.Exists(outputMd).Should().BeTrue();
@@ -75,7 +79,7 @@ public class ApiMarkdownTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "png");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputMd).Should().BeTrue();
         var markdownContent = await File.ReadAllTextAsync(outputMd);
@@ -103,7 +107,7 @@ public class ApiMarkdownTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "svg");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputMd).Should().BeTrue();
         var markdownContent = await File.ReadAllTextAsync(outputMd);
@@ -125,7 +129,7 @@ public class ApiMarkdownTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "svg");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputMd).Should().BeTrue();
         var markdownContent = await File.ReadAllTextAsync(outputMd);
@@ -182,7 +186,7 @@ public class ApiMarkdownTests : IDisposable
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(outputMd).Should().BeTrue();
@@ -216,7 +220,7 @@ public class ApiMarkdownTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, "svg");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(outputPath).Should().BeTrue();
@@ -237,7 +241,7 @@ public class ApiMarkdownTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "svg");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputMd).Should().BeTrue();
 
@@ -267,7 +271,7 @@ public class ApiMarkdownTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputMd, "svg");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputMd).Should().BeTrue();
         var markdownContent = await File.ReadAllTextAsync(outputMd);

@@ -7,32 +7,20 @@ namespace MermaidCli.Tests;
 /// <summary>
 /// Comprehensive workflow tests that test all files in test-positive and test-negative folders.
 /// Ports tests.js lines 114-150, 403-427, 445-465
+/// Uses shared browser fixture for performance optimization.
 /// </summary>
-public class WorkflowIntegrationTests : IAsyncLifetime
+[Collection("Browser")]
+public class WorkflowIntegrationTests
 {
     private readonly string _testOutputDir;
-    private IBrowser? _browser;
-    private PuppeteerMermaidRenderer? _renderer;
+    private readonly IBrowser _browser;
+    private readonly PuppeteerMermaidRenderer _renderer;
 
-    public WorkflowIntegrationTests()
+    public WorkflowIntegrationTests(BrowserFixture browserFixture)
     {
         _testOutputDir = TestHelpers.CreateTempTestDirectory();
-    }
-
-    public async Task InitializeAsync()
-    {
-        var config = new BrowserConfig(Headless: true, ExecutablePath: null, Args: null, Timeout: 0, AllowBrowserDownload: true);
-        _browser = await MermaidRunner.LaunchBrowserAsync(config);
-        _renderer = new PuppeteerMermaidRenderer();
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_browser != null)
-            await _browser.CloseAsync();
-        
-        if (_renderer != null)
-            await _renderer.DisposeAsync();
+        _browser = browserFixture.Browser!;
+        _renderer = browserFixture.Renderer!;
     }
 
     #region Test Data Generators
@@ -101,7 +89,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         // Act & Assert
         await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
         });
     }
 
@@ -121,7 +109,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         // Act & Assert
         await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
         });
     }
 
@@ -141,7 +129,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var outputPath = Path.Combine(_testOutputDir, $"flowchart1-{format}.{format}");
 
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             File.Exists(outputPath).Should().BeTrue();
             var bytes = await File.ReadAllBytesAsync(outputPath);
@@ -164,7 +152,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var outputPath = Path.Combine(_testOutputDir, "workflowtests_sequence.svg");
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath);
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
         var content = await File.ReadAllTextAsync(outputPath);
@@ -179,7 +167,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var outputPath = Path.Combine(_testOutputDir, "WorkflowTests_Markdown.md");
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath);
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Verify output markdown file exists
         File.Exists(outputPath).Should().BeTrue();
@@ -204,7 +192,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var outputPath = Path.Combine(_testOutputDir, "mermaid-enhanced.md");
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath);
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Verify output markdown file exists
         File.Exists(outputPath).Should().BeTrue();
@@ -264,7 +252,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -297,7 +285,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
         var svgContent = System.Text.Encoding.UTF8.GetString(result.Data);
 
         // Assert
@@ -329,7 +317,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -363,7 +351,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -413,7 +401,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
             // Assert
             result.Data.Should().NotBeNull();
             result.Data.Length.Should().BeGreaterThan(0);
@@ -448,7 +436,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -470,7 +458,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             // For markdown input, diagrams are named with -1, -2, etc. suffix
@@ -495,7 +483,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -517,7 +505,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -539,7 +527,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -561,7 +549,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -583,7 +571,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -605,7 +593,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -627,7 +615,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -659,7 +647,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -689,7 +677,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
             // Act
-            await MermaidRunner.RunAsync(options);
+            await MermaidRunner.RunAsync(options, _browser);
 
             // Assert
             File.Exists(outputPath).Should().BeTrue($"output file for format {format} should exist");
@@ -722,7 +710,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
             var renderOptions = TestHelpers.CreateDefaultRenderOptions();
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -761,7 +749,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
         // Act - process markdown with CRLF line endings
         var options = TestHelpers.CreateDefaultOptions(inputFile, outputFile, "svg");
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - should handle CRLF correctly without corruption
         var diagramFile = Path.Combine(_testOutputDir, "crlf-detect-1.svg");
@@ -785,7 +773,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
         // Act - generate markdown output with replaced code blocks
         var options = TestHelpers.CreateDefaultOptions(inputFile, outputFile, "md");
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - output markdown file should exist
         File.Exists(outputFile).Should().BeTrue("output markdown should be generated");
@@ -829,7 +817,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
         // Act - process markdown without mermaid blocks (should not crash)
         var options = TestHelpers.CreateDefaultOptions(inputFile, outputFile, "md");
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - should not crash and should not generate any diagram files
         var outputFiles = Directory.GetFiles(_testOutputDir, "mermaidless-markdown-file-*.svg");
@@ -850,7 +838,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
         // Act - process markdown without mermaid blocks (should not crash)
         var options = TestHelpers.CreateDefaultOptions(inputFile, outputFile, "md");
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - should not crash and should not generate any diagram files
         var outputFiles = Directory.GetFiles(_testOutputDir, "no-charts-*.svg");
@@ -882,7 +870,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var renderOptions = TestHelpers.CreateDefaultRenderOptions(backgroundColor: "red");
 
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -936,7 +924,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -972,7 +960,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(svgId: "custom-id");
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Data.Should().NotBeNull();
@@ -1005,8 +993,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(mermaidConfig: mermaidConfig);
 
         // Act - render twice
-        var result1 = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
-        var result2 = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result1 = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result2 = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result1.Data.Should().NotBeNull();
@@ -1062,7 +1050,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(mermaidConfig: mermaidConfig);
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Data.Should().NotBeNull();
@@ -1096,7 +1084,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - file with .mmd.png extension should exist
         File.Exists(outputPath).Should().BeTrue("output file flowchart1.mmd.png should exist");
@@ -1119,7 +1107,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - file with .mmd.svg extension should exist
         File.Exists(outputPath).Should().BeTrue("output file flowchart1.mmd.svg should exist");
@@ -1142,7 +1130,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - file with .mmd.pdf extension should exist
         File.Exists(outputPath).Should().BeTrue("output file flowchart1.mmd.pdf should exist");
@@ -1165,7 +1153,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - multiple diagram files should be created with .png extension
         // Based on mermaid.md content, we expect at least diagrams 1-9
@@ -1195,7 +1183,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - multiple diagram files should be created with .svg extension
         // Based on test.js line 247-255, we expect diagrams 1, 2, 3, 8, 9 at minimum
@@ -1225,7 +1213,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - multiple diagram files should be created with .pdf extension
         var expectedDiagrams = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -1255,7 +1243,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - should create SVG files by default
         // Based on test.js line 224-235, we expect diagrams 1, 2, 3, 8, 9
@@ -1287,7 +1275,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();
@@ -1313,7 +1301,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(iconPacks: userIconPacks);
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();
@@ -1348,7 +1336,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();

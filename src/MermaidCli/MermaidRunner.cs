@@ -6,13 +6,19 @@ namespace MermaidCli;
 
 public static class MermaidRunner
 {
-    public static async Task RunAsync(CliOptions options)
+    /// <summary>
+    /// Run the MermaidCli with the given options.
+    /// </summary>
+    /// <param name="options">CLI options</param>
+    /// <param name="browser">Optional browser instance to reuse. If null, a new browser will be launched and closed.</param>
+    public static async Task RunAsync(CliOptions options, IBrowser? browser = null)
     {
         Action<string> info = options.Quiet
             ? _ => { }
             : message => Console.WriteLine(message);
 
-        IBrowser? browser = null;
+        IBrowser? ownedBrowser = null;
+        var shouldCloseBrowser = browser == null;
         await using var renderer = new PuppeteerMermaidRenderer();
         try
         {
@@ -55,7 +61,11 @@ public static class MermaidRunner
 
                 for (var i = 0; i < blocks.Count; i++)
                 {
-                    browser ??= await LaunchBrowserAsync(options.BrowserConfig);
+                    if (browser == null)
+                    {
+                        ownedBrowser ??= await LaunchBrowserAsync(options.BrowserConfig);
+                        browser = ownedBrowser;
+                    }
 
                     var block = blocks[i];
 
@@ -114,7 +124,11 @@ public static class MermaidRunner
             else
             {
                 info("Generating single mermaid chart");
-                browser = await LaunchBrowserAsync(options.BrowserConfig);
+                if (browser == null)
+                {
+                    ownedBrowser ??= await LaunchBrowserAsync(options.BrowserConfig);
+                    browser = ownedBrowser;
+                }
                 var result = await renderer.RenderAsync(
                     browser, definition, diagramFormat, options.RenderOptions);
 
@@ -131,8 +145,9 @@ public static class MermaidRunner
         }
         finally
         {
-            if (browser != null)
-                await browser.CloseAsync();
+            // Only close browser if we created it (not provided externally)
+            if (shouldCloseBrowser && ownedBrowser != null)
+                await ownedBrowser.CloseAsync();
         }
     }
 

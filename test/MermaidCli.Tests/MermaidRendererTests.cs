@@ -4,25 +4,16 @@ using MermaidCli.Browser;
 
 namespace MermaidCli.Tests;
 
-public class PuppeteerMermaidRendererTests : IAsyncLifetime
+[Collection("Browser")]
+public class PuppeteerMermaidRendererTests
 {
-    private IBrowser? _browser;
-    private PuppeteerMermaidRenderer? _renderer;
+    private readonly IBrowser _browser;
+    private readonly PuppeteerMermaidRenderer _renderer;
 
-    public async Task InitializeAsync()
+    public PuppeteerMermaidRendererTests(BrowserFixture browserFixture)
     {
-        var config = new BrowserConfig(Headless: true, ExecutablePath: null, Args: null, Timeout: 0, AllowBrowserDownload: true);
-        _browser = await MermaidRunner.LaunchBrowserAsync(config);
-        _renderer = new PuppeteerMermaidRenderer();
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_browser != null)
-            await _browser.CloseAsync();
-        
-        if (_renderer != null)
-            await _renderer.DisposeAsync();
+        _browser = browserFixture.Browser!;
+        _renderer = browserFixture.Renderer!;
     }
 
     private static RenderOptions DefaultRenderOptions() => new(
@@ -46,7 +37,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
     public async Task RenderSvg_ShouldReturnSvgBytes()
     {
         var mmd = "graph TD;\n    nA-->B;\n";
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
         var text = Encoding.UTF8.GetString(result.Data);
@@ -59,7 +50,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
         var invalid = "this is not a valid mermaid file";
         await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await _renderer!.RenderAsync(_browser!, invalid, "svg", DefaultRenderOptions());
+            await _renderer.RenderAsync(_browser, invalid, "svg", DefaultRenderOptions());
         });
     }
 
@@ -67,7 +58,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
     public async Task Render_ShouldReturnTitleAndDesc()
     {
         var mmd = "graph TD;\n    accTitle: Hi\n    accDescr: World\n    nA-->B;\n";
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Title.Should().Be("Hi");
         result.Desc.Should().Be("World");
         result.Data.Length.Should().BeGreaterThan(0);
@@ -77,7 +68,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
     public async Task RenderPng_ShouldReturnPngBytes()
     {
         var mmd = "graph TD;\n    A-->B;\n";
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "png", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "png", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
         // PNG files start with specific magic bytes
@@ -91,7 +82,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
     public async Task RenderPdf_ShouldReturnPdfBytes()
     {
         var mmd = "graph TD;\n    A-->B;\n";
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "pdf", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "pdf", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
         // PDF files start with %PDF
@@ -106,7 +97,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
         var customCss = ".node { stroke: red !important; }";
         var options = DefaultRenderOptions() with { CustomCss = customCss };
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
     }
@@ -123,7 +114,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
             {
                 MermaidConfig = new Dictionary<string, object> { ["theme"] = theme }
             };
-            var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+            var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
             result.Data.Should().NotBeNull();
             result.Data.Length.Should().BeGreaterThan(0);
         }
@@ -135,7 +126,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
         var mmd = "graph TD;\n    A-->B;\n";
         var options = DefaultRenderOptions() with { BackgroundColor = "transparent" };
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
     }
@@ -149,7 +140,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
     B[""fa:fa-home Home""]
     A-->B";
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
 
@@ -168,7 +159,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
         };
 
         // Should not throw even if icon pack can't be fetched (it catches errors)
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
         result.Data.Should().NotBeNull();
     }
 
@@ -182,7 +173,7 @@ public class PuppeteerMermaidRendererTests : IAsyncLifetime
         };
 
         // Should not throw even if icon pack can't be fetched (it catches errors)
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
         result.Data.Should().NotBeNull();
     }
 
@@ -197,7 +188,7 @@ graph TD
     B-->D
     C-->D";
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
 
@@ -213,7 +204,7 @@ graph TD
     Alice->Bob: Hello
     Bob->Alice: Hi";
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
 
@@ -240,7 +231,7 @@ graph TD
     classDef decisionClass fill:#FFD700,stroke:#333,stroke-width:2px
     classDef endClass fill:#FF6B6B,stroke:#333,stroke-width:2px";
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
 
@@ -256,7 +247,7 @@ graph TD
         var mmd = "graph TD;\n    A-->B;\n";
         var options = DefaultRenderOptions() with { Width = 1920, Height = 1080 };
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", options);
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", options);
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
     }
@@ -274,7 +265,7 @@ graph TD
 
         foreach (var mmd in diagrams)
         {
-            var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+            var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
             result.Data.Should().NotBeNull();
             result.Data.Length.Should().BeGreaterThan(0);
         }
@@ -287,7 +278,7 @@ graph TD
         var nodes = string.Join("\n    ", Enumerable.Range(1, 20).Select(i => $"A{i}-->A{i + 1}"));
         var mmd = $"graph TD;\n    {nodes}";
 
-        var result = await _renderer!.RenderAsync(_browser!, mmd, "svg", DefaultRenderOptions());
+        var result = await _renderer.RenderAsync(_browser, mmd, "svg", DefaultRenderOptions());
         result.Data.Should().NotBeNull();
         result.Data.Length.Should().BeGreaterThan(0);
     }
