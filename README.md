@@ -202,6 +202,7 @@ Or pipe output to stdout:
 | `--browserConfigFile <path>` | `-p` | JSON browser configuration file |
 | `--downloadBrowser` | | Allow Chromium download if no browser is found |
 | `--iconPacks <packs...>` | | Icon packs to load (e.g., `@iconify-json/logos`) |
+| `--check-browsers` | | Display diagnostic information about available browsers |
 
 ## Configuration
 
@@ -259,14 +260,36 @@ See the [Mermaid documentation](https://mermaid.js.org/) for complete syntax and
 
 ## Known Issues & Troubleshooting
 
-### "Unable to launch a browser"
+### "Unable to find a compatible browser"
 
-**Cause:** No compatible browser was found on your system.
+**Cause:** No Chromium-based browser was found on your system.
 
 **Solutions:**
-1. Install Chrome, Chromium, or Edge
-2. Use `--downloadBrowser` to automatically download Chromium
-3. Specify a custom browser via `--browserConfigFile`
+
+1. **Install a compatible browser:**
+   - **Windows:** `winget install Google.Chrome` or `winget install Microsoft.Edge`
+   - **macOS:** `brew install --cask google-chrome`
+   - **Linux:** 
+     - Ubuntu/Debian: `sudo apt install chromium-browser`
+     - Fedora/RHEL: `sudo dnf install chromium`
+     - Arch: `sudo pacman -S chromium`
+
+2. **Use automatic download:** Add `--downloadBrowser` flag to download Chromium automatically
+
+3. **Specify custom browser path:** Create a `browser-config.json`:
+   ```json
+   {
+     "executablePath": "/path/to/chrome"
+   }
+   ```
+   Use with: `./mermaid-dotnet -i diagram.mmd -p browser-config.json`
+
+4. **Check browser availability:** Run diagnostics to see what browsers are detected:
+   ```bash
+   ./mermaid-dotnet --check-browsers
+   ```
+
+**Note:** On Windows, if you have Microsoft Edge installed, Mermaid.NET can use it automatically. Future versions may support using the WebView2 runtime as a fallback rendering engine.
 
 ### Browser sandbox issues (Linux)
 

@@ -229,9 +229,7 @@ public static class MermaidRunner
         }
 
         // First, attempt to launch a system browser by trying common executable names
-        var candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? new[] { "msedge", "chrome", "chromium", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" }
-            : new[] { "/usr/bin/chromium-browser", "/usr/bin/google-chrome", "/usr/bin/chromium" };
+        var candidates = BrowserHelper.GetBrowserCandidates();
 
         foreach (var exe in candidates)
         {
@@ -258,7 +256,7 @@ public static class MermaidRunner
             return await Puppeteer.LaunchAsync(launchOptions);
         }
 
-        throw new InvalidOperationException("Unable to launch a browser. Provide an executable path or allow browser download.");
+        throw new InvalidOperationException(BrowserHelper.GetBrowserNotFoundMessage());
     }
 
     private static async Task<string> GetInputDataAsync(string? inputFile)
