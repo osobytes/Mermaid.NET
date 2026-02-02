@@ -217,7 +217,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         content.Should().Contain("![diagram](./mermaid-enhanced-", "should contain diagram image links");
 
         // Check that newlines before/after diagrams are preserved (diagram 7)
-        content.Should().Contain("There should be an empty newline after this line, but before the Mermaid diagram:\n\n![diagram]",
+        // Normalize line endings for cross-platform compatibility (Windows uses \r\n)
+        content.ReplaceLineEndings("\n").Should().Contain("There should be an empty newline after this line, but before the Mermaid diagram:\n\n![diagram]",
             "newlines before diagrams should be preserved");
 
         // Verify that multiple diagram files were generated
