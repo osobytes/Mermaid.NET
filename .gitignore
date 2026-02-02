@@ -1,0 +1,54 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.doccache
+TestResults/
+.vs/
+.idea/
+.claude/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+
+# Project Specific
+# We ignore the fetched assets since we have a script to restore them
+src/MermaidCli/Templates/assets/
+
+# Publish outputs
+/publish/
+
+# Playwright / browser caches (optional)
+# Uncomment if you store Playwright browsers under the repo
+# playwright-browsers/
+
+# Misc dotnet / build artifacts
+**/[Bb]in/
+**/[Oo]bj/
+*.nupkg
+*.snupkg
+project.lock.json
+
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test outputs
+/test/output/
+/test/MermaidCli.Tests/test-output/
+

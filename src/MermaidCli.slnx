@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MermaidCli.Core/MermaidCli.Core.csproj" />
+  <Project Path="MermaidCli/MermaidCli.csproj" />
+  <Project Path="../test/MermaidCli.Tests/MermaidCli.Tests.csproj" />
+</Solution>

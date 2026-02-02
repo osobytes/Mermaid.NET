@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Fetch Mermaid assets
+        run: dotnet run scripts/FetchMermaidAssets.cs
+
+      - name: Restore dependencies
+        run: dotnet restore src/MermaidCli.slnx
+
+      - name: Build
+        run: dotnet build src/MermaidCli.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test src/MermaidCli.slnx
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
+          retention-days: 7
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Fetch Mermaid assets
+        run: dotnet run scripts/FetchMermaidAssets.cs
+
+      - name: Publish all platforms
+        run: |
+          for rid in linux-x64 linux-arm64 win-x64 win-arm64; do
+            dotnet publish src/MermaidCli/MermaidCli.csproj \
+              --configuration Release \
+              --runtime "$rid" \
+              -p:PublishSingleFile=true \
+              --output "publish/$rid"
+          done
+
+      - name: Upload linux-x64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-linux-x64
+          path: publish/linux-x64/
+          retention-days: 30
+
+      - name: Upload linux-arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-linux-arm64
+          path: publish/linux-arm64/
+          retention-days: 30
+
+      - name: Upload win-x64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-win-x64
+          path: publish/win-x64/
+          retention-days: 30
+
+      - name: Upload win-arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-win-arm64
+          path: publish/win-arm64/
+          retention-days: 30
