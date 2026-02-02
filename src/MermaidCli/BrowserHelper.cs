@@ -61,13 +61,13 @@ public static class BrowserHelper
         try
         {
             // Check for WebView2 runtime by looking for the loader DLL
-            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            var programFilesPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var programFilesX86Path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             
             var paths = new[]
             {
-                Path.Combine(programFiles, "Microsoft", "EdgeWebView", "Application"),
-                Path.Combine(programFilesX86, "Microsoft", "EdgeWebView", "Application")
+                Path.Combine(programFilesPath, "Microsoft", "EdgeWebView", "Application"),
+                Path.Combine(programFilesX86Path, "Microsoft", "EdgeWebView", "Application")
             };
 
             foreach (var path in paths)
