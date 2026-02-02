@@ -56,6 +56,15 @@ jobs:
           path: "**/TestResults/*.trx"
           retention-days: 7
 
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test/MermaidCli.Tests/test-output/
+          if-no-files-found: ignore
+          retention-days: 7
+
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -79,6 +88,12 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Resolve version
+        run: |
+          MERMAID_VERSION=$(node -p "require('./package.json').dependencies.mermaid.replace(/[\^~]/, '')")
+          echo "VERSION=${MERMAID_VERSION}.${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "Publishing version ${MERMAID_VERSION}.${{ github.run_number }}"
+
       - name: Fetch Mermaid assets
         run: dotnet run scripts/FetchMermaidAssets.cs
 
@@ -89,33 +104,34 @@ jobs:
               --configuration Release \
               --runtime "$rid" \
               -p:PublishSingleFile=true \
+              -p:Version="$VERSION" \
               --output "publish/$rid"
           done
 
       - name: Upload linux-x64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-linux-x64
+          name: mermaid-dotnet-${{ env.VERSION }}-linux-x64
           path: publish/linux-x64/
           retention-days: 30
 
       - name: Upload linux-arm64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-linux-arm64
+          name: mermaid-dotnet-${{ env.VERSION }}-linux-arm64
           path: publish/linux-arm64/
           retention-days: 30
 
       - name: Upload win-x64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-win-x64
+          name: mermaid-dotnet-${{ env.VERSION }}-win-x64
           path: publish/win-x64/
           retention-days: 30
 
       - name: Upload win-arm64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-win-arm64
+          name: mermaid-dotnet-${{ env.VERSION }}-win-arm64
           path: publish/win-arm64/
           retention-days: 30
