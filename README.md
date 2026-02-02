@@ -1,6 +1,6 @@
 # Mermaid.NET
 
-A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/mermaid-cli) that doesn't require Node.js. It takes a Mermaid definition file as input and generates SVG/PNG/PDF files as output, using your local browser instead of downloading one.
+A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/mermaid-cli) that doesn't require Node.js. This is a markdown renderer that uses a headless browser to render Mermaid diagrams and generate images from them. It takes a Mermaid definition file or markdown file as input and generates SVG/PNG/PDF files as output, using your local browser instead of downloading one.
 
 ## Why Mermaid.NET?
 
@@ -14,7 +14,7 @@ A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/
 
 ### Download Pre-built Binaries
 
-Download from the [Releases](https://github.com/yourusername/Mermaid.NET/releases) page. Two flavors are available:
+Download from the [Releases](https://github.com/osobytes/Mermaid.NET/releases) page. Two flavors are available:
 
 **Framework-dependent** — smaller binaries, requires [.NET 10.0 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed on the target machine:
 
