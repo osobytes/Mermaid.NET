@@ -12,18 +12,25 @@ A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/
 
 ## Installation
 
-### Download Pre-built Binaries (Self-Contained)
+### Download Pre-built Binaries
 
-Self-contained binaries include everything needed and don't require .NET runtime installation.
+Download from the [Releases](https://github.com/yourusername/Mermaid.NET/releases) page. Two flavors are available:
 
-Download from the [Releases](https://github.com/yourusername/Mermaid.NET/releases) page:
+**Framework-dependent** — smaller binaries, requires [.NET 10.0 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed on the target machine:
 
-- **Linux x64**: `mermaid-dotnet-linux-x64`
-- **Linux ARM64**: `mermaid-dotnet-linux-arm64`
-- **Windows x64**: `mermaid-dotnet-win-x64.exe`
-- **Windows ARM64**: `mermaid-dotnet-win-arm64.exe`
+- `mermaid-dotnet-linux-x64`
+- `mermaid-dotnet-linux-arm64`
+- `mermaid-dotnet-win-x64.exe`
+- `mermaid-dotnet-win-arm64.exe`
 
-Make executable (Linux/macOS):
+**Self-contained** — larger binaries, includes the .NET runtime so nothing else needs to be installed:
+
+- `mermaid-dotnet-self-contained-linux-x64`
+- `mermaid-dotnet-self-contained-linux-arm64`
+- `mermaid-dotnet-self-contained-win-x64.exe`
+- `mermaid-dotnet-self-contained-win-arm64.exe`
+
+Make executable (Linux):
 ```bash
 chmod +x mermaid-dotnet-linux-x64
 ./mermaid-dotnet-linux-x64 -i input.mmd -o output.svg
