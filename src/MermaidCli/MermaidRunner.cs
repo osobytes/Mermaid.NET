@@ -13,6 +13,7 @@ public static class MermaidRunner
             : message => Console.WriteLine(message);
 
         IBrowser? browser = null;
+        await using var renderer = new PuppeteerMermaidRenderer();
         try
         {
             var outputFormat = options.OutputFormat;
@@ -91,7 +92,7 @@ public static class MermaidRunner
                     // Trim trailing whitespace
                     diagramDefinition = diagramDefinition.Trim();
 
-                    var result = await PuppeteerMermaidRenderer.RenderAsync(
+                    var result = await renderer.RenderAsync(
                         browser, diagramDefinition, diagramFormat, options.RenderOptions);
                     await File.WriteAllBytesAsync(outputFile, result.Data);
                     info($" \u2705 {outputFileRelative}");
@@ -114,7 +115,7 @@ public static class MermaidRunner
             {
                 info("Generating single mermaid chart");
                 browser = await LaunchBrowserAsync(options.BrowserConfig);
-                var result = await PuppeteerMermaidRenderer.RenderAsync(
+                var result = await renderer.RenderAsync(
                     browser, definition, diagramFormat, options.RenderOptions);
 
                 if (options.OutputFile != "/dev/stdout")
@@ -132,7 +133,6 @@ public static class MermaidRunner
         {
             if (browser != null)
                 await browser.CloseAsync();
-            PuppeteerMermaidRenderer.CleanupTemplate();
         }
     }
 
@@ -143,6 +143,7 @@ public static class MermaidRunner
         {
             Headless = config.Headless,
             Args = config.Args ?? Array.Empty<string>(),
+            Timeout = config.Timeout,
             DefaultViewport = null! // We'll set viewport per-page
         };
 

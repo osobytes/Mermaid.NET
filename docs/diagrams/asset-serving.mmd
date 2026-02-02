@@ -1,0 +1,30 @@
+flowchart TD
+    A[Browser requests asset] --> B[HTTP Server receives request]
+    B --> C{URL path?}
+
+    C -->|assets/webfonts/*| D[Rewrite to<br/>assets/fontawesome/webfonts/*]
+    C -->|assets/iconify/*| E[Serve icon pack JSON]
+    C -->|assets/mermaid/*| F[Serve JS bundles]
+    C -->|assets/katex/*| G[Serve CSS & fonts]
+    C -->|assets/fontawesome/*| H[Serve CSS & webfonts]
+    C -->|Other| I[Serve from<br/>template directory]
+
+    D --> J[Resolve file on disk]
+    E --> J
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+
+    J --> K{File extension?}
+    K -->|.html| L["text/html"]
+    K -->|.css| M["text/css"]
+    K -->|.js .mjs| N["application/javascript"]
+    K -->|.json| O["application/json"]
+    K -->|.woff .woff2 .ttf| P["font/*"]
+
+    L --> Q[Send response with<br/>Content-Type header]
+    M --> Q
+    N --> Q
+    O --> Q
+    P --> Q

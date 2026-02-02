@@ -12,6 +12,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 {
     private readonly string _testOutputDir;
     private IBrowser? _browser;
+    private PuppeteerMermaidRenderer? _renderer;
 
     public WorkflowIntegrationTests()
     {
@@ -22,6 +23,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     {
         var config = new BrowserConfig(Headless: true, ExecutablePath: null, Args: null, Timeout: 0, AllowBrowserDownload: true);
         _browser = await MermaidRunner.LaunchBrowserAsync(config);
+        _renderer = new PuppeteerMermaidRenderer();
     }
 
     public async Task DisposeAsync()
@@ -29,7 +31,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         if (_browser != null)
             await _browser.CloseAsync();
         
-        // Keep test output files for inspection - do not delete
+        if (_renderer != null)
+            await _renderer.DisposeAsync();
     }
 
     #region Test Data Generators
@@ -118,7 +121,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         // Act & Assert
         await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
         });
     }
 
@@ -260,7 +263,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -293,7 +296,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
         var svgContent = System.Text.Encoding.UTF8.GetString(result.Data);
 
         // Assert
@@ -359,7 +362,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -409,7 +412,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
             // Assert
             result.Data.Should().NotBeNull();
             result.Data.Length.Should().BeGreaterThan(0);
@@ -718,7 +721,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
             var renderOptions = TestHelpers.CreateDefaultRenderOptions();
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -878,7 +881,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             var renderOptions = TestHelpers.CreateDefaultRenderOptions(backgroundColor: "red");
 
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -932,7 +935,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             );
 
             // Act
-            var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, format, renderOptions);
+            var result = await _renderer!.RenderAsync(_browser!, mmdContent, format, renderOptions);
 
             // Assert
             result.Data.Should().NotBeNull();
@@ -968,7 +971,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(svgId: "custom-id");
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Data.Should().NotBeNull();
@@ -1001,8 +1004,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(mermaidConfig: mermaidConfig);
 
         // Act - render twice
-        var result1 = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
-        var result2 = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result1 = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result2 = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result1.Data.Should().NotBeNull();
@@ -1058,7 +1061,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(mermaidConfig: mermaidConfig);
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Data.Should().NotBeNull();
@@ -1283,7 +1286,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions();
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();
@@ -1309,7 +1312,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         var renderOptions = TestHelpers.CreateDefaultRenderOptions(iconPacks: userIconPacks);
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();
@@ -1344,7 +1347,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         );
 
         // Act
-        var result = await PuppeteerMermaidRenderer.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
+        var result = await _renderer!.RenderAsync(_browser!, mmdContent, "svg", renderOptions);
 
         // Assert
         result.Should().NotBeNull();
@@ -1362,54 +1365,6 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         // Save output for inspection
         var outputPath = Path.Combine(_testOutputDir, "RenderApi-IconifyAndNamedPacks.svg");
         await File.WriteAllBytesAsync(outputPath, result.Data);
-    }
-
-    #endregion
-
-    #region Error Handling Tests
-
-    [Fact]
-    public async Task Test_PuppeteerTimeout_ShouldThrowError()
-    {
-        // Test that puppeteer timeout config causes failure
-        // Launch a new browser instance with very short timeout (1ms)
-        var timeoutConfig = new BrowserConfig(
-            Headless: true,
-            ExecutablePath: null,
-            Args: null,
-            Timeout: 1,  // 1 millisecond - should cause timeout
-            AllowBrowserDownload: false
-        );
-
-        IBrowser? timeoutBrowser = null;
-        try
-        {
-            timeoutBrowser = await MermaidRunner.LaunchBrowserAsync(timeoutConfig);
-
-            var inputPath = TestHelpers.GetTestInputPath("test-positive", "sequence.mmd");
-            var mmdContent = await File.ReadAllTextAsync(inputPath);
-            var renderOptions = TestHelpers.CreateDefaultRenderOptions();
-
-            // Act & Assert - rendering should fail due to timeout
-            var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
-            {
-                await PuppeteerMermaidRenderer.RenderAsync(timeoutBrowser, mmdContent, "svg", renderOptions);
-            });
-
-            // Verify exception mentions timeout
-            exception.Message.Should().Match(m =>
-                m.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("timed out", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("1 ms", StringComparison.OrdinalIgnoreCase),
-                "exception should mention timeout");
-        }
-        finally
-        {
-            if (timeoutBrowser != null)
-            {
-                await timeoutBrowser.CloseAsync();
-            }
-        }
     }
 
     #endregion

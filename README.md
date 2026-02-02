@@ -305,6 +305,38 @@ If you built without `--self-contained`, install the [.NET 10.0 Runtime](https:/
 
 Contributions are welcome! Please feel free to submit issues, bug reports, or pull requests.
 
+## How It Works
+
+Mermaid.NET renders diagrams entirely offline by default. It achieves this by bundling all required assets and driving a local browser through the Chrome DevTools Protocol.
+
+### Local HTTP Server
+
+All rendering assets — Mermaid JS, KaTeX, FontAwesome, and Iconify icon packs — are shipped inside the executable and served from disk via an embedded HTTP server bound to a dynamic port on localhost. The browser loads everything from this local server, so no CDN requests are made and rendering works fully offline.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/rendering-pipeline-dark.svg">
+  <img src="docs/diagrams/rendering-pipeline.svg" alt="Rendering pipeline">
+</picture>
+
+### Browser via CDP
+
+A local Chromium-based browser (Chrome, Chromium, or Edge) is launched and controlled through the Chrome DevTools Protocol over WebSocket. The server navigates to the HTML template, injects the Mermaid JS bundle via script tags, registers any icon packs, and calls `mermaid.render()` to produce the diagram in the page DOM.
+
+### Three Export Paths
+
+- **SVG** — The rendered `<svg>` element is serialized from the DOM using `XMLSerializer` and written directly to the output file
+- **PNG** — A CDP `Page.captureScreenshot` command captures the page as a base64-encoded PNG
+- **PDF** — A CDP `Page.printToPDF` command produces the PDF output
+
+### Asset Serving
+
+The HTTP server maps URL paths to bundled files on disk, rewriting certain paths (e.g. `assets/webfonts/` to the FontAwesome webfonts directory) and setting the correct MIME type for each response.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/asset-serving-dark.svg">
+  <img src="docs/diagrams/asset-serving.svg" alt="Asset serving">
+</picture>
+
 ## License
 
 This is an unofficial port of the [official mermaid-cli](https://github.com/mermaid-js/mermaid-cli) project, reimplemented in .NET to eliminate Node.js dependencies while maintaining feature parity.
@@ -319,3 +351,4 @@ Built with:
 ---
 
 *Made for developers who appreciate standalone executables.*
+
