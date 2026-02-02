@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 string scriptPath = GetScriptPath();
 string scriptDir = Path.GetDirectoryName(scriptPath) ?? Directory.GetCurrentDirectory();
 string projectRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."));
-string assetsDir = Path.Combine(projectRoot, "src", "Templates", "assets");
+string assetsDir = Path.Combine(projectRoot, "src", "MermaidCli", "Templates", "assets");
 string nodeModulesDir = Path.Combine(projectRoot, "node_modules");
 
 // Ensure npm dependencies are installed

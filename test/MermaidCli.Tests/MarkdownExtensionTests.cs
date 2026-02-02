@@ -4,23 +4,26 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
+using MermaidCli.Browser;
 using Xunit;
 
 namespace MermaidCli.Tests;
 
 /// <summary>
 /// Tests for extension handling when processing markdown files.
-/// Ports tests.js lines 237-289
 /// </summary>
+[Collection("Browser")]
 public class MarkdownExtensionTests : IDisposable
 {
     private readonly string _testOutputDir;
     private readonly string _testInputDir;
+    private readonly IBrowser _browser;
 
-    public MarkdownExtensionTests()
+    public MarkdownExtensionTests(BrowserFixture browserFixture)
     {
         _testOutputDir = TestHelpers.CreateTempTestDirectory();
         _testInputDir = Path.Combine(AppContext.BaseDirectory, "test-positive");
+        _browser = browserFixture.Browser!;
     }
 
     public void Dispose()
@@ -33,7 +36,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task PngExtension_ShouldBeAddedToMdFiles_WithAllDiagrams()
     {
-        // tests.js:237-245 - the .png extension should be added to .md files
         var inputPath = Path.Combine(_testInputDir, "mermaid.md");
         var outputBaseName = Path.Combine(_testOutputDir, "MarkdownExtensionTests_PngExt.md");
 
@@ -50,7 +52,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputBaseName, "png");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - verify PNG files were created
         // Note: We check for at least some files since the exact count may vary
@@ -68,7 +70,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task SvgExtension_ShouldBeAddedToMdFiles_WithAllDiagrams()
     {
-        // tests.js:247-255 - the .svg extension should be added to .md files
         var inputPath = Path.Combine(_testInputDir, "mermaid.md");
         var outputBaseName = Path.Combine(_testOutputDir, "MarkdownExtensionTests_SvgExt.md");
 
@@ -77,7 +78,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputBaseName, "svg");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - verify SVG files were created
         var generatedFiles = Directory.GetFiles(_testOutputDir, "MarkdownExtensionTests_SvgExt*.svg");
@@ -94,7 +95,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task PdfExtension_ShouldBeAddedToMdFiles_WithAllDiagrams()
     {
-        // tests.js:257-265 - the .pdf extension should be added to .md files
         var inputPath = Path.Combine(_testInputDir, "mermaid.md");
         var outputBaseName = Path.Combine(_testOutputDir, "MarkdownExtensionTests_PdfExt.md");
 
@@ -103,7 +103,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputBaseName, "pdf");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert - verify PDF files were created
         var generatedFiles = Directory.GetFiles(_testOutputDir, "MarkdownExtensionTests_PdfExt*.pdf");
@@ -124,7 +124,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task PdfExtension_ShouldBeAddedForMmdFile()
     {
-        // tests.js:267-273 - the extension .pdf should be added for .mmd file
         var inputPath = Path.Combine(_testInputDir, "flowchart1.mmd");
         var expectedOutputFile = Path.Combine(_testOutputDir, "MarkdownExtensionTests_MmdToPdf.pdf");
 
@@ -133,7 +132,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, expectedOutputFile, "pdf");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(expectedOutputFile).Should().BeTrue();
@@ -144,7 +143,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task SvgExtension_ShouldBeAddedForMmdFile()
     {
-        // tests.js:275-281 - the extension .svg should be added for .mmd file
         var inputPath = Path.Combine(_testInputDir, "flowchart1.mmd");
         var expectedOutputFile = Path.Combine(_testOutputDir, "MarkdownExtensionTests_MmdToSvg.svg");
 
@@ -153,7 +151,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, expectedOutputFile, "svg");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(expectedOutputFile).Should().BeTrue();
@@ -164,7 +162,6 @@ public class MarkdownExtensionTests : IDisposable
     [Fact]
     public async Task PngExtension_ShouldBeAddedForMmdFile()
     {
-        // tests.js:283-289 - the extension .png should be added for .mmd file
         var inputPath = Path.Combine(_testInputDir, "flowchart1.mmd");
         var expectedOutputFile = Path.Combine(_testOutputDir, "MarkdownExtensionTests_MmdToPng.png");
 
@@ -173,7 +170,7 @@ public class MarkdownExtensionTests : IDisposable
         var options = TestHelpers.CreateDefaultOptions(inputPath, expectedOutputFile, "png");
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(expectedOutputFile).Should().BeTrue();
@@ -197,7 +194,7 @@ public class MarkdownExtensionTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath, format);
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue($"file should be named {expectedOutputName}");
     }
@@ -211,7 +208,7 @@ public class MarkdownExtensionTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputBaseName, "svg");
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Should generate MarkdownExtensionTests_MultipleDiagrams.md-1.svg, MarkdownExtensionTests_MultipleDiagrams.md-2.svg, etc.
         var generatedFiles = Directory.GetFiles(_testOutputDir, "MarkdownExtensionTests_MultipleDiagrams*.svg");

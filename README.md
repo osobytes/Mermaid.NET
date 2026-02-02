@@ -1,8 +1,8 @@
-# MermaidCli
+# Mermaid.NET
 
 A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/mermaid-cli) that doesn't require Node.js. It takes a Mermaid definition file as input and generates SVG/PNG/PDF files as output, using your local browser instead of downloading one.
 
-## Why MermaidCli?
+## Why Mermaid.NET?
 
 - **No Node.js Required** - Built with .NET instead of Node.js
 - **Uses Your Local Browser** - Automatically detects Chrome, Chromium, or Edge on your system
@@ -12,21 +12,28 @@ A .NET port of the official [mermaid/mermaid-cli](https://github.com/mermaid-js/
 
 ## Installation
 
-### Download Pre-built Binaries (Self-Contained)
+### Download Pre-built Binaries
 
-Self-contained binaries include everything needed and don't require .NET runtime installation.
+Download from the [Releases](https://github.com/yourusername/Mermaid.NET/releases) page. Two flavors are available:
 
-Download from the [Releases](https://github.com/yourusername/MermaidCli/releases) page:
+**Framework-dependent** — smaller binaries, requires [.NET 10.0 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed on the target machine:
 
-- **Linux x64**: `MermaidCli-linux-x64`
-- **Linux ARM64**: `MermaidCli-linux-arm64`
-- **Windows x64**: `MermaidCli-win-x64.exe`
-- **Windows ARM64**: `MermaidCli-win-arm64.exe`
+- `mermaid-dotnet-linux-x64`
+- `mermaid-dotnet-linux-arm64`
+- `mermaid-dotnet-win-x64.exe`
+- `mermaid-dotnet-win-arm64.exe`
 
-Make executable (Linux/macOS):
+**Self-contained** — larger binaries, includes the .NET runtime so nothing else needs to be installed:
+
+- `mermaid-dotnet-self-contained-linux-x64`
+- `mermaid-dotnet-self-contained-linux-arm64`
+- `mermaid-dotnet-self-contained-win-x64.exe`
+- `mermaid-dotnet-self-contained-win-arm64.exe`
+
+Make executable (Linux):
 ```bash
-chmod +x MermaidCli-linux-x64
-./MermaidCli-linux-x64 -i input.mmd -o output.svg
+chmod +x mermaid-dotnet-linux-x64
+./mermaid-dotnet-linux-x64 -i input.mmd -o output.svg
 ```
 
 ### Build from Source
@@ -35,11 +42,11 @@ chmod +x MermaidCli-linux-x64
 
 Clone and build:
 ```bash
-git clone https://github.com/yourusername/MermaidCli.git
-cd MermaidCli
+git clone https://github.com/yourusername/Mermaid.NET.git
+cd Mermaid.NET
 ```
 
-**Fetch assets:** MermaidCli bundles Mermaid JS, Font Awesome, KaTeX, and Iconify assets into the executable at build time. These are sourced from npm packages, are not checked into the repo, and must be fetched before building:
+**Fetch assets:** Mermaid.NET bundles Mermaid JS, Font Awesome, KaTeX, and Iconify assets into the executable at build time. These are sourced from npm packages, are not checked into the repo, and must be fetched before building:
 
 ```bash
 npm ci
@@ -75,7 +82,7 @@ See [.NET RID Catalog](https://docs.microsoft.com/en-us/dotnet/core/rid-catalog)
 
 Convert a Mermaid diagram to SVG:
 ```bash
-./MermaidCli -i input.mmd -o output.svg
+./mermaid-dotnet -i input.mmd -o output.svg
 ```
 
 ## Examples
@@ -83,13 +90,13 @@ Convert a Mermaid diagram to SVG:
 ### Create a PNG with Dark Theme and Transparent Background
 
 ```bash
-./MermaidCli -i input.mmd -o output.png -t dark -b transparent
+./mermaid-dotnet -i input.mmd -o output.png -t dark -b transparent
 ```
 
 ### Create a Diagram with Custom Dimensions and Scale
 
 ```bash
-./MermaidCli -i diagram.mmd -o diagram.png -w 1200 -H 800 -s 2
+./mermaid-dotnet -i diagram.mmd -o diagram.png -w 1200 -H 800 -s 2
 ```
 
 ### Animate an SVG with Custom CSS
@@ -97,7 +104,7 @@ Convert a Mermaid diagram to SVG:
 The `--cssFile` option inlines custom CSS into the output SVG:
 
 ```bash
-./MermaidCli -i flowchart.mmd -o animated-flowchart.svg -C custom-animations.css
+./mermaid-dotnet -i flowchart.mmd -o animated-flowchart.svg -C custom-animations.css
 ```
 
 **Note:** If you want to override Mermaid's default styles, use `themeCSS` in a config file instead. You may need `!important` to override built-in styles.
@@ -105,7 +112,7 @@ The `--cssFile` option inlines custom CSS into the output SVG:
 ### Transform a Markdown File with Mermaid Diagrams
 
 ```bash
-./MermaidCli -i readme.template.md -o readme.md
+./mermaid-dotnet -i readme.template.md -o readme.md
 ```
 
 This command transforms a markdown file by finding Mermaid diagrams, generating SVG files from them, and replacing the code blocks with image references.
@@ -141,14 +148,14 @@ sequenceDiagram
 
 Use `-a` to specify where diagram files should be saved:
 ```bash
-./MermaidCli -i README.md -o output.md -a ./diagrams/
+./mermaid-dotnet -i README.md -o output.md -a ./diagrams/
 ```
 
 ### Piping from stdin
 
 Use stdin with heredoc:
 ```bash
-cat << EOF | ./MermaidCli -i -
+cat << EOF | ./mermaid-dotnet -i -
 graph TD
     A[Client] --> B[Load Balancer]
     B --> C[Server 1]
@@ -158,13 +165,13 @@ EOF
 
 Or pipe output to stdout:
 ```bash
-./MermaidCli -i diagram.mmd -o - -e svg > output.svg
+./mermaid-dotnet -i diagram.mmd -o - -e svg > output.svg
 ```
 
 ### See All Options
 
 ```bash
-./MermaidCli -h
+./mermaid-dotnet -h
 ```
 
 ## Command-Line Options
@@ -200,7 +207,7 @@ Or pipe output to stdout:
 
 ### Browser Behavior
 
-MermaidCli's browser detection order:
+Mermaid.NET's browser detection order:
 
 1. **Custom path** - If specified in `--browserConfigFile`
 2. **System browsers** - Chrome, Chromium, or Edge
@@ -218,7 +225,7 @@ MermaidCli's browser detection order:
 
 Usage:
 ```bash
-./MermaidCli -i diagram.mmd -p browser-config.json
+./mermaid-dotnet -i diagram.mmd -p browser-config.json
 ```
 
 ### Mermaid Configuration
@@ -239,12 +246,12 @@ Usage:
 
 Usage:
 ```bash
-./MermaidCli -i diagram.mmd -c mermaid-config.json
+./mermaid-dotnet -i diagram.mmd -c mermaid-config.json
 ```
 
 ## Supported Diagram Types
 
-MermaidCli supports all Mermaid diagram types including:
+Mermaid.NET supports all Mermaid diagram types including:
 
 Flowcharts • Sequence Diagrams • Class Diagrams • State Diagrams • ER Diagrams • Gantt Charts • Pie Charts • Git Graphs • User Journey Maps • C4 Diagrams • Timeline • Mindmap • And more...
 
@@ -277,17 +284,17 @@ Use with `--browserConfigFile browser-config.json`
 
 ### Icon packs not loading
 
-MermaidCli automatically detects and loads icon packs based on your diagram. For manual control:
+Mermaid.NET automatically detects and loads icon packs based on your diagram. For manual control:
 
 ```bash
-./MermaidCli -i diagram.mmd --iconPacks @iconify-json/logos @iconify-json/mdi
+./mermaid-dotnet -i diagram.mmd --iconPacks @iconify-json/logos @iconify-json/mdi
 ```
 
 ### Output is blank or corrupted
 
 Try adjusting dimensions and scale:
 ```bash
-./MermaidCli -i diagram.mmd -w 1600 -H 1200 -s 2
+./mermaid-dotnet -i diagram.mmd -w 1600 -H 1200 -s 2
 ```
 
 ### .NET runtime not found (non self-contained builds)
@@ -298,6 +305,38 @@ If you built without `--self-contained`, install the [.NET 10.0 Runtime](https:/
 
 Contributions are welcome! Please feel free to submit issues, bug reports, or pull requests.
 
+## How It Works
+
+Mermaid.NET renders diagrams entirely offline by default. It achieves this by bundling all required assets and driving a local browser through the Chrome DevTools Protocol.
+
+### Local HTTP Server
+
+All rendering assets — Mermaid JS, KaTeX, FontAwesome, and Iconify icon packs — are shipped inside the executable and served from disk via an embedded HTTP server bound to a dynamic port on localhost. The browser loads everything from this local server, so no CDN requests are made and rendering works fully offline.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/rendering-pipeline-dark.svg">
+  <img src="docs/diagrams/rendering-pipeline.svg" alt="Rendering pipeline">
+</picture>
+
+### Browser via CDP
+
+A local Chromium-based browser (Chrome, Chromium, or Edge) is launched and controlled through the Chrome DevTools Protocol over WebSocket. The server navigates to the HTML template, injects the Mermaid JS bundle via script tags, registers any icon packs, and calls `mermaid.render()` to produce the diagram in the page DOM.
+
+### Three Export Paths
+
+- **SVG** — The rendered `<svg>` element is serialized from the DOM using `XMLSerializer` and written directly to the output file
+- **PNG** — A CDP `Page.captureScreenshot` command captures the page as a base64-encoded PNG
+- **PDF** — A CDP `Page.printToPDF` command produces the PDF output
+
+### Asset Serving
+
+The HTTP server maps URL paths to bundled files on disk, rewriting certain paths (e.g. `assets/webfonts/` to the FontAwesome webfonts directory) and setting the correct MIME type for each response.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/asset-serving-dark.svg">
+  <img src="docs/diagrams/asset-serving.svg" alt="Asset serving">
+</picture>
+
 ## License
 
 This is an unofficial port of the [official mermaid-cli](https://github.com/mermaid-js/mermaid-cli) project, reimplemented in .NET to eliminate Node.js dependencies while maintaining feature parity.
@@ -306,9 +345,10 @@ This is an unofficial port of the [official mermaid-cli](https://github.com/merm
 
 Built with:
 - [Mermaid](https://mermaid.js.org/) - JavaScript diagramming and charting library
-- [PuppeteerSharp](https://github.com/hardkoded/puppeteer-sharp) - .NET port of Puppeteer for browser automation. Rather than pulling in the full package, MermaidCli includes only the minimal subset of PuppeteerSharp's source needed for browser interaction, keeping the dependency footprint small and focused
+- [PuppeteerSharp](https://github.com/hardkoded/puppeteer-sharp) - .NET port of Puppeteer for browser automation. Rather than pulling in the full package, Mermaid.NET includes only the minimal subset of PuppeteerSharp's source needed for browser interaction, keeping the dependency footprint small and focused
 - Inspired by [mermaid-js/mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
 
 ---
 
 *Made for developers who appreciate standalone executables.*
+

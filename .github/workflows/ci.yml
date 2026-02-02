@@ -10,8 +10,17 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-latest
+    name: Build & Test (${{ matrix.os-label }})
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os-label: linux
+          - runner: windows-latest
+            os-label: win
 
     steps:
       - name: Checkout
@@ -52,14 +61,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.os-label }}
           path: "**/TestResults/*.trx"
+          retention-days: 7
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output-${{ matrix.os-label }}
+          path: test/MermaidCli.Tests/test-output/
+          if-no-files-found: ignore
           retention-days: 7
 
   publish:
     name: Publish
     runs-on: ubuntu-latest
     needs: build-and-test
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -79,43 +99,109 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Resolve version
+        run: |
+          MERMAID_VERSION=$(node -p "require('./package.json').dependencies.mermaid.replace(/[\^~]/, '')")
+          echo "VERSION=${MERMAID_VERSION}.${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "Publishing version ${MERMAID_VERSION}.${{ github.run_number }}"
+
       - name: Fetch Mermaid assets
         run: dotnet run scripts/FetchMermaidAssets.cs
 
-      - name: Publish all platforms
+      - name: Publish framework-dependent
         run: |
           for rid in linux-x64 linux-arm64 win-x64 win-arm64; do
             dotnet publish src/MermaidCli/MermaidCli.csproj \
               --configuration Release \
               --runtime "$rid" \
               -p:PublishSingleFile=true \
-              --output "publish/$rid"
+              -p:SelfContained=false \
+              -p:Version="$VERSION" \
+              --output "publish/framework-dependent/$rid"
           done
 
-      - name: Upload linux-x64
+      - name: Publish self-contained
+        run: |
+          for rid in linux-x64 linux-arm64 win-x64 win-arm64; do
+            dotnet publish src/MermaidCli/MermaidCli.csproj \
+              --configuration Release \
+              --runtime "$rid" \
+              -p:PublishSingleFile=true \
+              --self-contained true \
+              -p:Version="$VERSION" \
+              --output "publish/self-contained/$rid"
+          done
+
+      - name: Upload framework-dependent linux-x64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-linux-x64
-          path: publish/linux-x64/
+          name: mermaid-dotnet-${{ env.VERSION }}-linux-x64
+          path: publish/framework-dependent/linux-x64/
           retention-days: 30
 
-      - name: Upload linux-arm64
+      - name: Upload framework-dependent linux-arm64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-linux-arm64
-          path: publish/linux-arm64/
+          name: mermaid-dotnet-${{ env.VERSION }}-linux-arm64
+          path: publish/framework-dependent/linux-arm64/
           retention-days: 30
 
-      - name: Upload win-x64
+      - name: Upload framework-dependent win-x64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-win-x64
-          path: publish/win-x64/
+          name: mermaid-dotnet-${{ env.VERSION }}-win-x64
+          path: publish/framework-dependent/win-x64/
           retention-days: 30
 
-      - name: Upload win-arm64
+      - name: Upload framework-dependent win-arm64
         uses: actions/upload-artifact@v4
         with:
-          name: mermaid-dotnet-win-arm64
-          path: publish/win-arm64/
+          name: mermaid-dotnet-${{ env.VERSION }}-win-arm64
+          path: publish/framework-dependent/win-arm64/
           retention-days: 30
+
+      - name: Upload self-contained linux-x64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-${{ env.VERSION }}-self-contained-linux-x64
+          path: publish/self-contained/linux-x64/
+          retention-days: 30
+
+      - name: Upload self-contained linux-arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-${{ env.VERSION }}-self-contained-linux-arm64
+          path: publish/self-contained/linux-arm64/
+          retention-days: 30
+
+      - name: Upload self-contained win-x64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-${{ env.VERSION }}-self-contained-win-x64
+          path: publish/self-contained/win-x64/
+          retention-days: 30
+
+      - name: Upload self-contained win-arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-dotnet-${{ env.VERSION }}-self-contained-win-arm64
+          path: publish/self-contained/win-arm64/
+          retention-days: 30
+
+      - name: Package release archives
+        run: |
+          mkdir -p release
+          for rid in linux-x64 linux-arm64 win-x64 win-arm64; do
+            tar -czf "release/mermaid-dotnet-${VERSION}-${rid}.tar.gz" -C "publish/framework-dependent/$rid" .
+            tar -czf "release/mermaid-dotnet-${VERSION}-self-contained-${rid}.tar.gz" -C "publish/self-contained/$rid" .
+          done
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "v${VERSION}"
+          release/*
+          --title "v${VERSION}"
+          --notes "Mermaid.NET v${VERSION} — built from mermaid $(node -p "require('./package.json').dependencies.mermaid.replace(/[\^~]/, '')")"
+          --latest

@@ -5,17 +5,18 @@ using MermaidCli.Browser;
 
 namespace MermaidCli;
 
-public static class PuppeteerMermaidRenderer
+public class PuppeteerMermaidRenderer : IAsyncDisposable
 {
     private const string MermaidCdnUrl = "assets/mermaid/mermaid.min.js";
     private const string ZenumlCdnUrl = "assets/mermaid/mermaid-zenuml.min.js";
     private const string ElkCdnUrl = "assets/mermaid/mermaid-layout-elk.min.js";
 
-    private static string? _templatePath;
-    private static HttpListener? _httpListener;
-    private static string? _httpServerUrl;
+    private string? _templatePath;
+    private HttpListener? _httpListener;
+    private string? _httpServerUrl;
+    private bool _isDisposed;
 
-    private static string GetTemplateDirectory()
+    private async Task<string> GetTemplateDirectoryAsync()
     {
         if (_templatePath != null && File.Exists(_templatePath))
             return Path.GetDirectoryName(_templatePath)!;
@@ -65,16 +66,16 @@ public static class PuppeteerMermaidRenderer
 
         _templatePath = Path.Combine(Path.GetTempPath(), $"mermaid-cli-template-{Guid.NewGuid():N}.html");
         using var fileStream = File.Create(_templatePath);
-        stream.CopyTo(fileStream);
+        await stream.CopyToAsync(fileStream);
         return Path.GetDirectoryName(_templatePath)!;
     }
 
-    private static string StartHttpServer()
+    private async Task<string> StartHttpServerAsync()
     {
         if (_httpServerUrl != null)
             return _httpServerUrl;
 
-        var templateDir = GetTemplateDirectory();
+        var templateDir = await GetTemplateDirectoryAsync();
 
         // Find an available port
         var port = 0;
@@ -91,80 +92,14 @@ public static class PuppeteerMermaidRenderer
         _httpListener.Start();
 
         // Handle requests in background
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
-            while (_httpListener != null && _httpListener.IsListening)
+            while (!_isDisposed && _httpListener != null && _httpListener.IsListening)
             {
                 try
                 {
                     var context = await _httpListener.GetContextAsync();
-                    var request = context.Request;
-                    var response = context.Response;
-
-                    var requestPath = request.Url?.LocalPath.TrimStart('/') ?? "";
-                    if (string.IsNullOrEmpty(requestPath))
-                        requestPath = "mermaid-template.html";
-
-                    // Handle favicon.ico request - return empty response instead of 404
-                    if (requestPath == "favicon.ico")
-                    {
-                        response.StatusCode = 204; // No Content
-                        response.Close();
-                        continue;
-                    }
-
-                    // Handle webfonts path mapping (CSS references ../webfonts/ but they're in fontawesome/webfonts/)
-                    if (requestPath.StartsWith("assets/webfonts/"))
-                    {
-                        requestPath = requestPath.Replace("assets/webfonts/", "assets/fontawesome/webfonts/");
-                    }
-
-                    // Handle iconify path mapping for icon packs
-                    if (requestPath.StartsWith("assets/iconify/"))
-                    {
-                        // Icons are served from assets/iconify/ directory
-                    }
-
-                    var filePath = Path.Combine(templateDir, requestPath);
-
-                    if (File.Exists(filePath))
-                    {
-                        try
-                        {
-                            var content = await File.ReadAllBytesAsync(filePath);
-
-                            // Set content type
-                            var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                            response.ContentType = extension switch
-                            {
-                                ".html" => "text/html",
-                                ".css" => "text/css",
-                                ".js" => "application/javascript",
-                                ".mjs" => "application/javascript",
-                                ".json" => "application/json",
-                                ".woff" => "font/woff",
-                                ".woff2" => "font/woff2",
-                                ".ttf" => "font/ttf",
-                                _ => "application/octet-stream"
-                            };
-
-                            response.StatusCode = 200;
-                            response.ContentLength64 = content.Length;
-                            await response.OutputStream.WriteAsync(content);
-                            await response.OutputStream.FlushAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.Error.WriteLine($"Error serving {filePath}: {ex.Message}");
-                            response.StatusCode = 500;
-                        }
-                    }
-                    else
-                    {
-                        response.StatusCode = 404;
-                    }
-
-                    response.Close();
+                    _ = HandleRequestAsync(context, templateDir);
                 }
                 catch
                 {
@@ -174,47 +109,100 @@ public static class PuppeteerMermaidRenderer
             }
         });
 
-        // Give server a moment to start
-        Thread.Sleep(100);
-
         return _httpServerUrl;
     }
 
-    public static async Task<RenderResult> RenderAsync(
+    private async Task HandleRequestAsync(HttpListenerContext context, string templateDir)
+    {
+        var request = context.Request;
+        var response = context.Response;
+
+        try
+        {
+            var requestPath = request.Url?.LocalPath.TrimStart('/') ?? "";
+            if (string.IsNullOrEmpty(requestPath))
+                requestPath = "mermaid-template.html";
+
+            // Handle favicon.ico request - return empty response instead of 404
+            if (requestPath == "favicon.ico")
+            {
+                response.StatusCode = 204; // No Content
+                response.Close();
+                return;
+            }
+
+            // Handle webfonts path mapping (CSS references ../webfonts/ but they're in fontawesome/webfonts/)
+            if (requestPath.StartsWith("assets/webfonts/"))
+            {
+                requestPath = requestPath.Replace("assets/webfonts/", "assets/fontawesome/webfonts/");
+            }
+
+            var filePath = Path.Combine(templateDir, requestPath);
+
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    var content = await File.ReadAllBytesAsync(filePath);
+
+                    // Set content type
+                    var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                    response.ContentType = extension switch
+                    {
+                        ".html" => "text/html",
+                        ".css" => "text/css",
+                        ".js" => "application/javascript",
+                        ".mjs" => "application/javascript",
+                        ".json" => "application/json",
+                        ".woff" => "font/woff",
+                        ".woff2" => "font/woff2",
+                        ".ttf" => "font/ttf",
+                        _ => "application/octet-stream"
+                    };
+
+                    response.StatusCode = 200;
+                    response.ContentLength64 = content.Length;
+                    await response.OutputStream.WriteAsync(content);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error serving {filePath}: {ex.Message}");
+                    response.StatusCode = 500;
+                }
+            }
+            else
+            {
+                response.StatusCode = 404;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Request error: {ex.Message}");
+        }
+        finally
+        {
+            try { response.Close(); } catch { }
+        }
+    }
+
+    public async Task<RenderResult> RenderAsync(
         IBrowser browser,
         string definition,
         string outputFormat,
         RenderOptions options)
     {
         var page = await browser.NewPageAsync();
-        await page.SetViewportAsync(new ViewPortOptions { Width = options.Width, Height = options.Height });
-
-        var consoleErrors = new List<string>();
-        var pageErrors = new List<string>();
-
-        var iconPacks = IconPackResolver.ResolveIconPacks(definition, options.IconPacks, options.IconPacksNamesAndUrls);
-
-        // Capture console messages for debugging
-        page.Console += (_, _) =>
-        {
-             // Simplified for minimal port
-             Console.Error.WriteLine("[Console] Message received");
-        };
-
-        // Capture page errors
-        page.PageError += (_, _) =>
-        {
-            pageErrors.Add("Page error occurred");
-            Console.Error.WriteLine("[PageError] error occurred");
-        };
-
         try
         {
-            var serverUrl = StartHttpServer();
+            await page.SetViewportAsync(new ViewPortOptions { Width = options.Width, Height = options.Height });
+
+            var iconPacks = IconPackResolver.ResolveIconPacks(definition, options.IconPacks, options.IconPacksNamesAndUrls);
+
+            var serverUrl = await StartHttpServerAsync();
             await page.GoToAsync(serverUrl, new NavigationOptions
             {
                 WaitUntil = new[] { WaitUntilNavigation.Networkidle0 },
-                Timeout = 30000 // 30 second timeout
+                Timeout = 30_000 // 30 second timeout
             });
 
             // Set background color
@@ -384,8 +372,13 @@ public static class PuppeteerMermaidRenderer
         }
     }
 
-    public static void CleanupTemplate()
+    public async ValueTask DisposeAsync()
     {
+        if (_isDisposed)
+            return;
+
+        _isDisposed = true;
+
         // Stop HTTP server
         if (_httpListener != null)
         {
@@ -396,7 +389,6 @@ public static class PuppeteerMermaidRenderer
             }
             catch { }
             _httpListener = null;
-            _httpServerUrl = null;
         }
 
         // Clean up template files
@@ -409,5 +401,7 @@ public static class PuppeteerMermaidRenderer
             }
             _templatePath = null;
         }
+
+        GC.SuppressFinalize(this);
     }
 }

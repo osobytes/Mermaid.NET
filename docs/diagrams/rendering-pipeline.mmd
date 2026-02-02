@@ -1,0 +1,39 @@
+sequenceDiagram
+    participant CLI as CLI
+    participant Runner as MermaidRunner
+    participant Browser as Browser (CDP)
+    participant HTTP as HTTP Server
+    participant Page as Page
+
+    CLI->>Runner: RunAsync(options)
+    Runner->>Browser: LaunchAsync()
+    Note over Browser: Detect Chrome/Edge/Chromium<br/>Connect via WebSocket
+
+    Runner->>HTTP: StartHttpServer()
+    Note over HTTP: Bind to dynamic port<br/>Serve assets from disk
+
+    Runner->>Browser: NewPageAsync()
+    Browser-->>Runner: CdpPage
+
+    Runner->>Page: GoToAsync(http://localhost:PORT/)
+    HTTP-->>Page: mermaid-template.html
+
+    Runner->>Page: AddScriptTag(mermaid.min.js)
+    Page->>HTTP: GET assets/mermaid/mermaid.min.js
+    HTTP-->>Page: JS bundle
+
+    Runner->>Page: EvaluateFunctionAsync()
+    Note over Page: Register icon packs<br/>Call mermaid.render()
+
+    alt SVG output
+        Runner->>Page: EvaluateFunction(XMLSerializer)
+        Page-->>Runner: SVG string
+    else PNG output
+        Runner->>Page: Page.captureScreenshot
+        Page-->>Runner: Base64 PNG
+    else PDF output
+        Runner->>Page: Page.printToPDF
+        Page-->>Runner: Base64 PDF
+    end
+
+    Runner-->>CLI: RenderResult (bytes)

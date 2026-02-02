@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MermaidCli.Browser;
 
 namespace MermaidCli.Tests;
 
@@ -6,15 +7,18 @@ namespace MermaidCli.Tests;
 /// Tests for various rendering options (background color, CSS, SVG ID).
 /// Ports tests.js lines 291-318
 /// </summary>
+[Collection("Browser")]
 public class RenderOptionsTests : IDisposable
 {
     private readonly string _testOutputDir;
     private readonly string _testInputDir;
+    private readonly IBrowser _browser;
 
-    public RenderOptionsTests()
+    public RenderOptionsTests(BrowserFixture browserFixture)
     {
         _testOutputDir = TestHelpers.CreateTempTestDirectory();
         _testInputDir = Path.Combine(AppContext.BaseDirectory, "test-positive");
+        _browser = browserFixture.Browser!;
     }
 
     public void Dispose()
@@ -39,7 +43,7 @@ public class RenderOptionsTests : IDisposable
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(outputPath).Should().BeTrue();
@@ -59,7 +63,7 @@ public class RenderOptionsTests : IDisposable
 
         var options = TestHelpers.CreateDefaultOptions(inputPath, outputPath);
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
         var content = await File.ReadAllTextAsync(outputPath);
@@ -90,7 +94,7 @@ public class RenderOptionsTests : IDisposable
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(outputPath).Should().BeTrue();
@@ -117,7 +121,7 @@ public class RenderOptionsTests : IDisposable
             backgroundColor: backgroundColor
         );
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
     }
@@ -153,7 +157,7 @@ public class RenderOptionsTests : IDisposable
         );
 
         // Act
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         // Assert
         File.Exists(outputPath).Should().BeTrue();
@@ -184,7 +188,7 @@ public class RenderOptionsTests : IDisposable
             customCss: cssPath
         );
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
         var content = await File.ReadAllTextAsync(outputPath);
@@ -216,7 +220,7 @@ public class RenderOptionsTests : IDisposable
             svgId: "combined-test-id"
         );
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
         var content = await File.ReadAllTextAsync(outputPath);
@@ -246,7 +250,7 @@ public class RenderOptionsTests : IDisposable
             customCss: cssPath
         );
 
-        await MermaidRunner.RunAsync(options);
+        await MermaidRunner.RunAsync(options, _browser);
 
         File.Exists(outputPath).Should().BeTrue();
         var content = await File.ReadAllTextAsync(outputPath);
