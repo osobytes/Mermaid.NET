@@ -3,17 +3,27 @@ using System.Text.RegularExpressions;
 namespace MermaidCli;
 
 /// <summary>
+/// Represents a resolved icon pack with its name and data source.
+/// </summary>
+public record ResolvedIconPack(string Name, string? LocalPath, string? ExternalUrl);
+
+/// <summary>
 /// Resolves which icon packs are needed based on diagram content and user configuration.
 /// Bundled icons: @iconify-json/devicon, @iconify-json/mdi, @iconify-json/simple-icons (iconify JSON)
 /// </summary>
 public static class IconPackResolver
 {
+    private static readonly HttpClient HttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    };
+
     // Iconify icon packs we bundle locally (JSON format)
     private static readonly Dictionary<string, string> BundledIconPacks = new()
     {
-        ["devicon"] = "devicon#assets/iconify/devicon.json",
-        ["mdi"] = "mdi#assets/iconify/mdi.json",
-        ["simple-icons"] = "simple-icons#assets/iconify/simple-icons.json"
+        ["devicon"] = "assets/iconify/devicon.json",
+        ["mdi"] = "assets/iconify/mdi.json",
+        ["simple-icons"] = "assets/iconify/simple-icons.json"
     };
 
     /// <summary>
@@ -47,7 +57,7 @@ public static class IconPackResolver
             // Then check bundled packs
             else if (BundledIconPacks.ContainsKey(prefix))
             {
-                result.Add(BundledIconPacks[prefix]);
+                result.Add($"{prefix}#{BundledIconPacks[prefix]}");
             }
             // Prefix not found - will fall back to Mermaid's default behavior
         }
@@ -78,6 +88,85 @@ public static class IconPackResolver
         }
 
         return result.Distinct().ToArray();
+    }
+
+    /// <summary>
+    /// Pre-fetches icon packs from C# (outside browser sandbox) and returns their JSON data.
+    /// This is more secure than letting the browser fetch external URLs.
+    /// </summary>
+    /// <param name="iconPacks">Array of icon pack name#source pairs</param>
+    /// <param name="templateDir">Template directory for resolving local paths</param>
+    /// <returns>Dictionary of icon pack name to JSON data</returns>
+    public static async Task<Dictionary<string, string>> PreFetchIconPacksAsync(
+        string[] iconPacks, 
+        string templateDir)
+    {
+        var result = new Dictionary<string, string>();
+
+        foreach (var iconPack in iconPacks)
+        {
+            var parts = iconPack.Split('#', 2);
+            if (parts.Length != 2) continue;
+
+            var packName = parts[0];
+            var source = parts[1];
+
+            try
+            {
+                string jsonData;
+
+                if (source.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    // HTTPS URL - fetch from C# (sandboxed from browser)
+                    jsonData = await HttpClient.GetStringAsync(source);
+                }
+                else if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                {
+                    // HTTP only allowed for localhost
+                    var uri = new Uri(source);
+                    if (uri.Host is "localhost" or "127.0.0.1" or "::1")
+                    {
+                        jsonData = await HttpClient.GetStringAsync(source);
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine($"Icon pack '{packName}': HTTP only allowed for localhost. Use HTTPS for external URLs.");
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Local file path
+                    var localPath = Path.Combine(templateDir, source);
+                    if (File.Exists(localPath))
+                    {
+                        jsonData = await File.ReadAllTextAsync(localPath);
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine($"Icon pack file not found: {localPath}");
+                        continue;
+                    }
+                }
+
+                // Validate it's actually JSON (basic check)
+                if (!string.IsNullOrWhiteSpace(jsonData) && 
+                    (jsonData.TrimStart().StartsWith("{") || jsonData.TrimStart().StartsWith("[")))
+                {
+                    result[packName] = jsonData;
+                }
+                else
+                {
+                    Console.Error.WriteLine($"Icon pack '{packName}' is not valid JSON");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to load icon pack '{packName}': {ex.Message}");
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

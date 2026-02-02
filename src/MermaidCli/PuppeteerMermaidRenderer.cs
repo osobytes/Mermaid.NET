@@ -131,6 +131,10 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
                 return;
             }
 
+            // Sanitize path to prevent directory traversal
+            // Remove any path traversal sequences
+            requestPath = requestPath.Replace("..", "").Replace("\\", "/");
+            
             // Handle webfonts path mapping (CSS references ../webfonts/ but they're in fontawesome/webfonts/)
             if (requestPath.StartsWith("assets/webfonts/"))
             {
@@ -138,6 +142,29 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
             }
 
             var filePath = Path.Combine(templateDir, requestPath);
+            
+            // Security: Validate that the resolved path is within the template directory
+            var fullTemplatePath = Path.GetFullPath(templateDir);
+            var fullFilePath = Path.GetFullPath(filePath);
+            
+            if (!fullFilePath.StartsWith(fullTemplatePath, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine($"Security: Path traversal attempt blocked: {requestPath}");
+                response.StatusCode = 403; // Forbidden
+                response.Close();
+                return;
+            }
+            
+            // Security: Validate file extension is in allowlist
+            var extension = Path.GetExtension(filePath).ToLowerInvariant();
+            var allowedExtensions = new[] { ".html", ".css", ".js", ".mjs", ".json", ".woff", ".woff2", ".ttf", ".svg", ".png" };
+            if (!string.IsNullOrEmpty(extension) && !allowedExtensions.Contains(extension))
+            {
+                Console.Error.WriteLine($"Security: Blocked disallowed file extension: {extension}");
+                response.StatusCode = 403; // Forbidden
+                response.Close();
+                return;
+            }
 
             if (File.Exists(filePath))
             {
@@ -145,20 +172,26 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
                 {
                     var content = await File.ReadAllBytesAsync(filePath);
 
-                    // Set content type
-                    var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                    // Set content type based on extension
                     response.ContentType = extension switch
                     {
-                        ".html" => "text/html",
-                        ".css" => "text/css",
-                        ".js" => "application/javascript",
-                        ".mjs" => "application/javascript",
-                        ".json" => "application/json",
+                        ".html" => "text/html; charset=utf-8",
+                        ".css" => "text/css; charset=utf-8",
+                        ".js" => "application/javascript; charset=utf-8",
+                        ".mjs" => "application/javascript; charset=utf-8",
+                        ".json" => "application/json; charset=utf-8",
+                        ".svg" => "image/svg+xml",
+                        ".png" => "image/png",
                         ".woff" => "font/woff",
                         ".woff2" => "font/woff2",
                         ".ttf" => "font/ttf",
                         _ => "application/octet-stream"
                     };
+
+                    // Security: Add security headers
+                    response.Headers.Add("X-Content-Type-Options", "nosniff");
+                    response.Headers.Add("X-Frame-Options", "DENY");
+                    response.Headers.Add("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data:; font-src 'self' data:");
 
                     response.StatusCode = 200;
                     response.ContentLength64 = content.Length;
@@ -196,7 +229,12 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
         {
             await page.SetViewportAsync(new ViewPortOptions { Width = options.Width, Height = options.Height });
 
-            var iconPacks = IconPackResolver.ResolveIconPacks(definition, options.IconPacks, options.IconPacksNamesAndUrls);
+            var templateDir = await GetTemplateDirectoryAsync();
+            var iconPackSources = IconPackResolver.ResolveIconPacks(definition, options.IconPacks, options.IconPacksNamesAndUrls);
+            
+            // Security: Pre-fetch icon packs from C# (sandboxed from browser)
+            // This prevents the browser from making any external network requests
+            var iconPackData = await IconPackResolver.PreFetchIconPacksAsync(iconPackSources, templateDir);
 
             var serverUrl = await StartHttpServerAsync();
             await page.GoToAsync(serverUrl, new NavigationOptions
@@ -236,7 +274,9 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
                 ? JsonSerializer.Serialize(options.MermaidConfig)
                 : "{}";
             var svgId = options.SvgId ?? "my-svg";
-            var iconPacksJson = JsonSerializer.Serialize(iconPacks);
+            
+            // Security: Icon pack data is pre-fetched from C# - browser doesn't need network access
+            var iconPackDataJson = JsonSerializer.Serialize(iconPackData);
 
             // Simplified: passing multiple args not supported yet, using JSON string
             var renderArgs = new {
@@ -246,15 +286,15 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
                 backgroundColor = options.BackgroundColor,
                 svgId,
                 elkUrl = ElkCdnUrl,
-                iconPacksJson
+                iconPackDataJson  // Pre-fetched data, not URLs
             };
 
             var metadata = await page.EvaluateFunctionAsync<JsonElement>(@"
                 (argsJson) => {
                     const args = JSON.parse(argsJson);
-                    const { definition, mermaidConfigJson, customCss, backgroundColor, svgId, elkUrl, iconPacksJson } = args;
+                    const { definition, mermaidConfigJson, customCss, backgroundColor, svgId, elkUrl, iconPackDataJson } = args;
                     const mermaidConfig = JSON.parse(mermaidConfigJson);
-                    const iconPacks = JSON.parse(iconPacksJson);
+                    const iconPackData = JSON.parse(iconPackDataJson);
 
                     return (async () => {
                         const { mermaid } = globalThis;
@@ -271,19 +311,14 @@ public class PuppeteerMermaidRenderer : IAsyncDisposable
                             await mermaid.registerExternalDiagrams([zenuml]);
                         }
 
-                        // Register icon packs before initializing Mermaid
-                        if (iconPacks && iconPacks.length > 0) {
-                            for (const packUrl of iconPacks) {
-                                const parts = packUrl.split('#');
-                                if (parts.length === 2) {
-                                    const [name, url] = parts;
-                                    try {
-                                        const response = await fetch(url);
-                                        const iconData = await response.json();
-                                        mermaid.registerIconPacks([{ name, icons: iconData }]);
-                                    } catch (err) {
-                                        console.error(`Failed to load icon pack ${name} from ${url}:`, err);
-                                    }
+                        // Register icon packs (data pre-fetched from C# - no network access needed)
+                        if (iconPackData && typeof iconPackData === 'object') {
+                            for (const [name, jsonData] of Object.entries(iconPackData)) {
+                                try {
+                                    const icons = JSON.parse(jsonData);
+                                    mermaid.registerIconPacks([{ name, icons }]);
+                                } catch (err) {
+                                    console.error(`Failed to parse icon pack ${name}:`, err);
                                 }
                             }
                         }

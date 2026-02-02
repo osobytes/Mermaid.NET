@@ -153,11 +153,71 @@ public static class MermaidRunner
 
     public static async Task<IBrowser> LaunchBrowserAsync(BrowserConfig config)
     {
+        // Security-hardened Chromium arguments for sandboxed rendering
+        var securityArgs = new[]
+        {
+            // Core security sandbox (keep enabled!)
+            // "--no-sandbox" is intentionally NOT included - we want the sandbox
+            
+            // Disable features that could be exploited
+            "--disable-extensions",
+            "--disable-plugins",
+            "--disable-sync",
+            "--disable-translate",
+            "--disable-default-apps",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-component-update",
+            "--disable-domain-reliability",
+            "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-popup-blocking",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            
+            // Disable hardware access
+            "--disable-gpu",
+            "--disable-software-rasterizer",
+            "--disable-dev-shm-usage",
+            
+            // Disable dangerous web features
+            "--disable-file-system",
+            "--disable-notifications",
+            "--disable-geolocation",
+            "--disable-media-stream",
+            "--disable-speech-api",
+            "--disable-remote-fonts",
+            "--disable-web-security=false", // Ensure security is ON
+            
+            // Network restrictions - block ALL external network access
+            "--disable-background-mode",
+            // Route all network traffic through a non-existent proxy, except localhost
+            // This blocks fetch(), XMLHttpRequest, WebSocket, img src, etc. from reaching external hosts
+            "--proxy-server=127.0.0.1:1",
+            "--proxy-bypass-list=localhost;127.0.0.1",
+            
+            // Automation/CI optimizations
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--mute-audio",
+            "--hide-scrollbars",
+            
+            // Process isolation
+            "--single-process=false", // Keep multi-process for security
+        };
+        
+        // Merge user args with security args (user args take precedence)
+        var userArgs = config.Args ?? Array.Empty<string>();
+        var allArgs = securityArgs.Concat(userArgs).Distinct().ToArray();
+        
         // If user provided an explicit executable path, use that first
         var launchOptions = new LaunchOptions
         {
             Headless = config.Headless,
-            Args = config.Args ?? Array.Empty<string>(),
+            Args = allArgs,
             Timeout = config.Timeout,
             DefaultViewport = null! // We'll set viewport per-page
         };
